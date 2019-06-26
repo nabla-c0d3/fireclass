@@ -11,33 +11,36 @@ from typing_extensions import Literal
 _firestore_client: Optional[firestore.Client] = None
 
 
-def initialize_firestore(db: firestore.Client) -> None:
+def initialize_with_firestore_client(db: firestore.Client) -> None:
     global _firestore_client
     _firestore_client = db
 
 
-class NotInitialized(Exception):
+class FirestoreClientNotConfigured(Exception):
     pass
 
 
 def _get_firestore_client() -> firestore.Client:
     if _firestore_client is None:
-        raise NotInitialized()
+        raise FirestoreClientNotConfigured(
+            f'Fireclass has not been initialized with a firestore.Client;'
+            f' see {initialize_with_firestore_client.__name__}() for more details.'
+        )
     return _firestore_client
 
 
 _DocumentClsTypeVar = TypeVar('_DocumentClsTypeVar', bound="Document")
 
 
-class DocumentQuery:
+class _DocumentQuery:
 
     def __init__(self, document_cls: Type[_DocumentClsTypeVar], firestore_query: Query) -> None:
         self._document_cls = document_cls
         self._firestore_query = firestore_query
 
-    def limit(self, count: int) -> 'DocumentQuery':
+    def limit(self, count: int) -> '_DocumentQuery':
         new_query = self._firestore_query.limit(count)
-        return DocumentQuery(self._document_cls, new_query)
+        return _DocumentQuery(self._document_cls, new_query)
 
     def get(self, transaction: Optional[Transaction] = None) -> Iterator[_DocumentClsTypeVar]:
         for firestore_document in self._firestore_query.get(transaction):
@@ -125,7 +128,7 @@ class Document:
             field_path: str,
             op_string: FirestoreOperator,
             value: Any
-    ) -> DocumentQuery:
+    ) -> _DocumentQuery:
         # TODO: Add support for .
         # Check that the field exists
         corresponding_field = None
@@ -140,4 +143,4 @@ class Document:
         if corresponding_field.type != type(value):
             raise TypeError()
 
-        return DocumentQuery(cls, cls.collection().where(field_path, op_string, value))
+        return _DocumentQuery(cls, cls.collection().where(field_path, op_string, value))
