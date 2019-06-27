@@ -1,5 +1,5 @@
-from dataclasses import dataclass, Field, fields, field, asdict
-from typing import TypeVar, Generic, Type, Any, Optional, Iterator
+from dataclasses import dataclass, fields, asdict
+from typing import TypeVar, Type, Any, Optional, Iterator
 
 from google.cloud import firestore
 from google.cloud.firestore_v1 import CollectionReference, Query, Transaction
@@ -43,7 +43,7 @@ class _DocumentQuery:
 
     def get(self, transaction: Optional[Transaction] = None) -> Iterator[_DocumentClsTypeVar]:
         for firestore_document in self._firestore_query.get(transaction):
-            document = self._document_cls(**firestore_document.to_dict())
+            document = self._document_cls(**firestore_document.to_dict())  # type: ignore
             document._id = firestore_document.id
             yield document
 
@@ -105,7 +105,7 @@ class Document:
         firestore_document = cls._collection().document(document_id).get()
         if not firestore_document or not firestore_document.exists:
             raise DocumentNotFound()
-        document = cls(**firestore_document.to_dict())
+        document = cls(**firestore_document.to_dict())  # type: ignore
         document._id = firestore_document.id
         return document
 
@@ -116,7 +116,7 @@ class Document:
     @classmethod
     def get(cls: Type[_DocumentTypeVar]) -> Iterator[_DocumentTypeVar]:
         for firestore_document in cls._collection().get():
-            document = cls(**firestore_document.to_dict())
+            document = cls(**firestore_document.to_dict())  # type: ignore
             document._id = firestore_document.id
             yield document
 
@@ -136,4 +136,4 @@ class Document:
         if corresponding_field.type != type(value):
             raise TypeError()
 
-        return _DocumentQuery(cls, cls.collection().where(field_path, op_string, value))
+        return _DocumentQuery(cls, cls._collection().where(field_path, op_string, value))
