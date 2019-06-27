@@ -23,22 +23,21 @@ class FirestoreClientNotConfigured(Exception):
 def _get_firestore_client() -> firestore.Client:
     if _firestore_client is None:
         raise FirestoreClientNotConfigured(
-            f'Fireclass has not been initialized with a firestore.Client;'
-            f' see {initialize_with_firestore_client.__name__}() for more details.'
+            f"Fireclass has not been initialized with a firestore.Client;"
+            f" see {initialize_with_firestore_client.__name__}() for more details."
         )
     return _firestore_client
 
 
-_DocumentClsTypeVar = TypeVar('_DocumentClsTypeVar', bound="Document")
+_DocumentClsTypeVar = TypeVar("_DocumentClsTypeVar", bound="Document")
 
 
 class _DocumentQuery:
-
     def __init__(self, document_cls: Type[_DocumentClsTypeVar], firestore_query: Query) -> None:
         self._document_cls = document_cls
         self._firestore_query = firestore_query
 
-    def limit(self, count: int) -> '_DocumentQuery':
+    def limit(self, count: int) -> "_DocumentQuery":
         new_query = self._firestore_query.limit(count)
         return _DocumentQuery(self._document_cls, new_query)
 
@@ -64,12 +63,11 @@ class DocumentAlreadyExistsInDatabase(Exception):
     pass
 
 
-_DocumentTypeVar = TypeVar('_DocumentTypeVar', bound="Document")
+_DocumentTypeVar = TypeVar("_DocumentTypeVar", bound="Document")
 
 
 @dataclass
 class Document:
-
     def __post_init__(self) -> None:
         self._id: Optional[str] = None  # Set when the document was saved to the DB or retrieved from the DB
 
@@ -123,12 +121,7 @@ class Document:
             yield document
 
     @classmethod
-    def where(
-            cls: Type[_DocumentTypeVar],
-            field_path: str,
-            op_string: FirestoreOperator,
-            value: Any
-    ) -> _DocumentQuery:
+    def where(cls: Type[_DocumentTypeVar], field_path: str, op_string: FirestoreOperator, value: Any) -> _DocumentQuery:
         # TODO: Add support for .
         # Check that the field exists
         corresponding_field = None
