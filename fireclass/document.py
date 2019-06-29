@@ -1,5 +1,5 @@
-from dataclasses import dataclass, Field, fields, field, asdict
-from typing import TypeVar, Generic, Type, Any, Optional, Iterator
+from dataclasses import dataclass, fields, asdict
+from typing import TypeVar, Type, Any, Optional, Iterator
 
 from google.cloud import firestore
 from google.cloud.firestore_v1 import CollectionReference, Query, Transaction
@@ -23,8 +23,8 @@ class FirestoreClientNotConfigured(Exception):
 def _get_firestore_client() -> firestore.Client:
     if _firestore_client is None:
         raise FirestoreClientNotConfigured(
-            f'Fireclass has not been initialized with a firestore.Client;'
-            f' see {initialize_with_firestore_client.__name__}() for more details.'
+            f"Fireclass has not been initialized with a firestore.Client;"
+            f" see {initialize_with_firestore_client.__name__}() for more details."
         )
     return _firestore_client
 
@@ -50,13 +50,13 @@ class _DocumentQuery:
         self._document_cls = document_cls
         self._firestore_query = firestore_query
 
-    def limit(self, count: int) -> '_DocumentQuery':
+    def limit(self, count: int) -> "_DocumentQuery":
         new_query = self._firestore_query.limit(count)
         return _DocumentQuery(self._document_cls, new_query)
 
     def get(self, transaction: Optional[Transaction] = None) -> Iterator[_DocumentSubclassTypeVar]:
         for firestore_document in self._firestore_query.get(transaction):
-            document = self._document_cls(**firestore_document.to_dict())
+            document = self._document_cls(**firestore_document.to_dict())  # type: ignore
             document._id = firestore_document.id
             yield document
 
@@ -66,7 +66,6 @@ FirestoreOperator = Literal["<", "<=", "==", ">=", ">", "array_contains"]
 
 @dataclass
 class Document:
-
     def __post_init__(self) -> None:
         self._id: Optional[str] = None  # Set when the document was saved to the DB or retrieved from the DB
 
@@ -104,7 +103,7 @@ class Document:
         firestore_document = cls._collection().document(document_id).get()
         if not firestore_document or not firestore_document.exists:
             raise DocumentNotFound()
-        document = cls(**firestore_document.to_dict())
+        document = cls(**firestore_document.to_dict())  # type: ignore
         document._id = firestore_document.id
         return document
 
@@ -115,17 +114,21 @@ class Document:
     @classmethod
     def get(cls: Type[_DocumentSubclassTypeVar]) -> Iterator[_DocumentSubclassTypeVar]:
         for firestore_document in cls._collection().get():
-            document = cls(**firestore_document.to_dict())
+            document = cls(**firestore_document.to_dict())  # type: ignore
             document._id = firestore_document.id
             yield document
 
     @classmethod
+<<<<<<< HEAD
     def where(
             cls: Type[_DocumentSubclassTypeVar],
             field_path: str,
             op_string: FirestoreOperator,
             value: Any
     ) -> _DocumentQuery:
+=======
+    def where(cls: Type[_DocumentTypeVar], field_path: str, op_string: FirestoreOperator, value: Any) -> _DocumentQuery:
+>>>>>>> bb29cefad28e1b63580f5642f23ea3621e1437f0
         # TODO: Add support for .
         # Check that the field exists
         corresponding_field = None
@@ -140,4 +143,4 @@ class Document:
         if corresponding_field.type != type(value):
             raise TypeError()
 
-        return _DocumentQuery(cls, cls.collection().where(field_path, op_string, value))
+        return _DocumentQuery(cls, cls._collection().where(field_path, op_string, value))
