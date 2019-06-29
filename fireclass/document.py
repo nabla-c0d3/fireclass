@@ -41,11 +41,10 @@ class DocumentAlreadyExistsInDatabase(Exception):
     pass
 
 
-_DocumentSubclassTypeVar = TypeVar('_DocumentSubclassTypeVar', bound="Document")
+_DocumentSubclassTypeVar = TypeVar("_DocumentSubclassTypeVar", bound="Document")
 
 
 class _DocumentQuery:
-
     def __init__(self, document_cls: Type[_DocumentSubclassTypeVar], firestore_query: Query) -> None:
         self._document_cls = document_cls
         self._firestore_query = firestore_query
@@ -119,16 +118,9 @@ class Document:
             yield document
 
     @classmethod
-<<<<<<< HEAD
     def where(
-            cls: Type[_DocumentSubclassTypeVar],
-            field_path: str,
-            op_string: FirestoreOperator,
-            value: Any
+        cls: Type[_DocumentSubclassTypeVar], field_path: str, op_string: FirestoreOperator, value: Any
     ) -> _DocumentQuery:
-=======
-    def where(cls: Type[_DocumentTypeVar], field_path: str, op_string: FirestoreOperator, value: Any) -> _DocumentQuery:
->>>>>>> bb29cefad28e1b63580f5642f23ea3621e1437f0
         # TODO: Add support for .
         # Check that the field exists
         corresponding_field = None
