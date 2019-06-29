@@ -1,8 +1,8 @@
+# Fireclass
+
 [![Python Version](https://img.shields.io/pypi/pyversions/fireclass.svg)](https://pypi.org/project/fireclass/)
 [![PyPi Version](https://img.shields.io/pypi/v/fireclass.svg)](https://pypi.org/project/fireclass/)
 [![Build Status](https://travis-ci.org/nabla-c0d3/fireclass.svg?branch=master)](https://travis-ci.org/nabla-c0d3/fireclass)
-
-# Fireclass
 
 Firestore + Dataclass: declare and interact with your Firestore models using dataclasses.
 
