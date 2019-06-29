@@ -10,6 +10,7 @@ invoke = "*"
 pytest = "*"
 mypy = "*"
 "flake8" = "*"
+pytest-cov = "*"
 
 [packages]
 google-cloud-firestore = "*"

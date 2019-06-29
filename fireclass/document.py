@@ -1,3 +1,4 @@
+from abc import ABC
 from dataclasses import dataclass, fields, asdict
 from typing import TypeVar, Type, Any, Optional, Iterator
 
@@ -14,6 +15,13 @@ _firestore_client: Optional[firestore.Client] = None
 def initialize_with_firestore_client(db: firestore.Client) -> None:
     global _firestore_client
     _firestore_client = db
+
+
+def _discard_firestore_client() -> None:
+    """Only to be used by the test suite.
+    """
+    global _firestore_client
+    _firestore_client = None
 
 
 class FirestoreClientNotConfigured(Exception):
@@ -33,11 +41,11 @@ class DocumentNotFound(Exception):
     pass
 
 
-class DocumentNotSavedToDatabase(Exception):
+class DocumentNotCreatedInDatabase(Exception):
     pass
 
 
-class DocumentAlreadyExistsInDatabase(Exception):
+class DocumentAlreadyCreatedInDatabase(Exception):
     pass
 
 
@@ -53,8 +61,8 @@ class _DocumentQuery:
         new_query = self._firestore_query.limit(count)
         return _DocumentQuery(self._document_cls, new_query)
 
-    def get(self, transaction: Optional[Transaction] = None) -> Iterator[_DocumentSubclassTypeVar]:
-        for firestore_document in self._firestore_query.get(transaction):
+    def stream(self, transaction: Optional[Transaction] = None) -> Iterator[_DocumentSubclassTypeVar]:
+        for firestore_document in self._firestore_query.stream(transaction):
             document = self._document_cls(**firestore_document.to_dict())  # type: ignore
             document._id = firestore_document.id
             yield document
@@ -64,7 +72,7 @@ FirestoreOperator = Literal["<", "<=", "==", ">=", ">", "array_contains"]
 
 
 @dataclass
-class Document:
+class Document(ABC):
     def __post_init__(self) -> None:
         self._id: Optional[str] = None  # Set when the document was saved to the DB or retrieved from the DB
 
@@ -74,7 +82,7 @@ class Document:
 
     def create(self, document_id: Optional[str] = None) -> WriteResult:
         if self.id is not None:
-            raise DocumentAlreadyExistsInDatabase()
+            raise DocumentAlreadyCreatedInDatabase()
         document_ref = self._collection().document(document_id)
         write_result = document_ref.create(asdict(self))
         self._id = document_ref.id
@@ -82,7 +90,7 @@ class Document:
 
     def update(self) -> WriteResult:
         if self.id is None:
-            raise DocumentNotSavedToDatabase()
+            raise DocumentNotCreatedInDatabase()
         document_ref = self._collection().document(self.id)
         write_result = document_ref.update(asdict(self))
         self._id = document_ref.id
@@ -90,7 +98,7 @@ class Document:
 
     def delete(self) -> Timestamp:
         if self.id is None:
-            raise DocumentNotSavedToDatabase()
+            raise DocumentNotCreatedInDatabase()
         return self.delete_document(self.id)
 
     @classmethod
@@ -111,8 +119,8 @@ class Document:
         return cls._collection().document(document_id).delete()
 
     @classmethod
-    def get(cls: Type[_DocumentSubclassTypeVar]) -> Iterator[_DocumentSubclassTypeVar]:
-        for firestore_document in cls._collection().get():
+    def stream(cls: Type[_DocumentSubclassTypeVar]) -> Iterator[_DocumentSubclassTypeVar]:
+        for firestore_document in cls._collection().stream():
             document = cls(**firestore_document.to_dict())  # type: ignore
             document._id = firestore_document.id
             yield document

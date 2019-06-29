@@ -1,8 +1,18 @@
 from dataclasses import dataclass
-from datetime import datetime
 from enum import Enum
+from google.cloud import firestore
 
-from fireclass.document import Document
+from fireclass.document import (
+    initialize_with_firestore_client,
+    _discard_firestore_client,
+    FirestoreClientNotConfigured,
+    DocumentNotCreatedInDatabase,
+    DocumentAlreadyCreatedInDatabase,
+)
+
+import pytest
+
+from fireclass.document import Document, DocumentNotFound
 
 
 class UserMembershipLevelEnum(Enum):
@@ -15,29 +25,188 @@ class UserMembershipLevelEnum(Enum):
 class User(Document):
     """The model we use for our tests; it has a field of each type.
     """
-    email_address: str = 'test@test.com'
-    family_members_count : int = 5
-    last_login_date: datetime = datetime.utcnow()
-    membership: UserMembershipLevelEnum = UserMembershipLevelEnum.FULL
+
+    email_address: str = "test@test.com"
+    family_members_count: int = 5
+    # last_login_date: datetime = datetime.utcnow()
+    # membership: UserMembershipLevelEnum = UserMembershipLevelEnum.FULL
     is_active: bool = True
 
 
+@pytest.fixture
+def setup_firestore_db():
+    # Use a dedicated Firestore DB setup in GCP
+    db = firestore.Client.from_service_account_json("travis-ci-test-suite-service-account.json")
+    initialize_with_firestore_client(db)
+
+    # Run the test case
+    yield
+
+    # Clear all the documents created by the test case
+    for user in User.stream():
+        user.delete()
+
+    # Discard the handle to the DB
+    _discard_firestore_client()
+
+
 class TestDocument:
+    def test_not_initialized(self):
+        # Given a document
+        user = User()
 
-    def test_document_create_get_and_delete(self):
-        pass
+        # When saving it to the DB but the DB firestore client was not supplied
+        # It fails
+        with pytest.raises(FirestoreClientNotConfigured):
+            user.create()
 
-    def test_document_update(self):
-        pass
+    def test_document_create_get_and_delete(self, setup_firestore_db):
+        # Given a document
+        user = User()
 
-    def test_get_document(self):
-        pass
+        # When saving it to the DB without providing an ID
+        # It succeeds
+        user.create()
 
-    def test_delete_document(self):
-        pass
+        # And the document can be retrieved from the DB
+        retrieved_user = User.get_document(user.id)
+        assert user == retrieved_user
 
-    def test_get(self):
-        pass
+        # And the document can be deleted from the DB
+        User.delete_document(user.id)
+        with pytest.raises(DocumentNotFound):
+            User.get_document(user.id)
 
-    def test_where(self):
-        pass
+    def test_document_create_with_id(self, setup_firestore_db):
+        # Given a document
+        user = User()
+
+        # When saving it to the DB with a specific ID
+        # It succeeds
+        document_id = "123"
+        user.create(document_id=document_id)
+
+        # And the document can be retrieved from the DB
+        retrieved_user = User.get_document(document_id)
+        assert user == retrieved_user
+
+    def test_document_create_but_already_created(self, setup_firestore_db):
+        # Given a document already saved to the DB
+        user = User()
+        user.create()
+
+        # When trying to create it again
+        # It fails
+        with pytest.raises(DocumentAlreadyCreatedInDatabase):
+            user.create()
+
+    def test_document_update(self, setup_firestore_db):
+        # Given a document in the DB
+        user = User(email_address="1@2.com", is_active=True)
+        user.create()
+
+        # When updating some of its fields
+        new_email_address = "456@7.com"
+        new_is_active = False
+        user.email_address = new_email_address
+        user.is_active = new_is_active
+
+        # And the saving the updated document to the DB
+        # It succeeds
+        user.update()
+
+        # And the updated fields were saved
+        retrieved_user = User.get_document(user.id)
+        assert new_email_address == retrieved_user.email_address
+        assert new_is_active == retrieved_user.is_active
+
+    def test_document_update_but_not_created_yet(self, setup_firestore_db):
+        # Given a document that hasn't been saved to the DB
+        user = User()
+
+        # When updating a field
+        user.email_address = "456@7.com"
+
+        # And the saving the updated document to the DB
+        # It fails because the document hasn't been created in the DB
+        with pytest.raises(DocumentNotCreatedInDatabase):
+            user.update()
+
+    def test_document_delete_but_not_created_yet(self, setup_firestore_db):
+        # Given a document that hasn't been saved to the DB
+        user = User()
+
+        # When trying to delete the document
+        # It fails because the document hasn't been created in the DB
+        with pytest.raises(DocumentNotCreatedInDatabase):
+            user.delete()
+
+    def test_get(self, setup_firestore_db):
+        # Given a bunch of documents
+        users_count = 5
+        saved_user_ids = set()
+        for _ in range(users_count):
+            user = User()
+            user.create()
+            saved_user_ids.add(user.id)
+
+        # When retrieving every document in the collection
+        # It succeeds
+        retrieved_users = [user for user in User.stream()]
+        assert 5 == len(retrieved_users)
+        assert saved_user_ids == {user.id for user in retrieved_users}
+
+    def test_where(self, setup_firestore_db):
+        # Given a bunch of documents
+        users_count = 5
+        for _ in range(users_count):
+            user = User(email_address="12@34.com")
+            user.create()
+
+        # And two documents with a specific field value
+        email_address = "unique@test.com"
+        user_to_return1 = User(email_address=email_address)
+        user_to_return1.create()
+        user_to_return2 = User(email_address=email_address)
+        user_to_return2.create()
+
+        # When querying for this specific value
+        query = User.where("email_address", "==", email_address)
+
+        # It succeeds
+        found_users = [user for user in query.stream()]
+
+        # And the right documents are returned
+        assert 2 == len(found_users)
+        assert {user_to_return1.id, user_to_return2.id} == {user.id for user in found_users}
+
+    def test_where_with_limit(self, setup_firestore_db):
+        # Given a bunch of documents
+        users_count = 5
+        for _ in range(users_count):
+            user = User(is_active=False)
+            user.create()
+
+        # When querying for a specific value
+        query = User.where("is_active", "==", False)
+
+        # With a limit of 2 documents
+        query = query.limit(2)
+
+        # It succeeds
+        found_users = [user for user in query.stream()]
+
+        # And the right number of documents is returned
+        assert 2 == len(found_users)
+
+    def test_where_with_wrong_field_name(self, setup_firestore_db):
+        # When querying for a non-existent field
+        # It fails
+        with pytest.raises(TypeError):
+            User.where("wrong_field_name", "==", "123").stream()
+
+    def test_where_with_wrong_field_value_type(self, setup_firestore_db):
+        # When querying for a field by supplying a value with the wrong type
+        # It fails
+        with pytest.raises(TypeError):
+            User.where("is_active", "==", "not a bool").stream()
