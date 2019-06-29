@@ -137,10 +137,13 @@ class Document(ABC):
                 corresponding_field = defined_field
 
         if not corresponding_field:
-            raise TypeError()
+            raise TypeError(f"The supplied field_path '{field_path}' does not exist on '{cls.__name__}'")
 
         # Check that the value has the right type
         if corresponding_field.type != type(value):
-            raise TypeError()
+            raise TypeError(
+                f"The supplied value '{value}' has type {type(value)} but the corresponding field"
+                f" '{corresponding_field.name}' requires values of type {corresponding_field.type}."
+            )
 
         return _DocumentQuery(cls, cls._collection().where(field_path, op_string, value))
