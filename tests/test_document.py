@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
+from datetime import datetime, timezone
 from enum import Enum
 from google.cloud import firestore
 
@@ -28,8 +29,8 @@ class User(Document):
 
     email_address: str = "test@test.com"
     family_members_count: int = 5
-    # last_login_date: datetime = datetime.utcnow()
-    # membership: UserMembershipLevelEnum = UserMembershipLevelEnum.FULL
+    last_login_date: datetime = datetime.utcnow().replace(tzinfo=timezone.utc)
+    membership: UserMembershipLevelEnum = UserMembershipLevelEnum.FULL
     is_active: bool = True
 
 
@@ -156,7 +157,7 @@ class TestDocument:
         assert 5 == len(retrieved_users)
         assert saved_user_ids == {user.id for user in retrieved_users}
 
-    def test_where(self, setup_firestore_db):
+    def test_where_with_enum_field(self, setup_firestore_db):
         # Given a bunch of documents
         users_count = 5
         for _ in range(users_count):
@@ -164,6 +165,32 @@ class TestDocument:
             user.create()
 
         # And two documents with a specific field value
+        membership = UserMembershipLevelEnum.INTERMEDIATE
+        user_to_return1 = User(membership=membership)
+        user_to_return1.create()
+        user_to_return2 = User(membership=membership)
+        user_to_return2.create()
+
+        # When querying for this specific value
+        query = User.where("membership", "==", membership)
+
+        # It succeeds
+        found_users = [user for user in query.stream()]
+
+        # And the right documents are returned
+        assert 2 == len(found_users)
+        expected_users = {user_to_return1.id: user_to_return1, user_to_return2.id: user_to_return2}
+        for user in found_users:
+            assert asdict(expected_users[user.id]) == asdict(user)
+
+    def test_where_with_str_field(self, setup_firestore_db):
+        # Given a bunch of documents
+        users_count = 5
+        for _ in range(users_count):
+            user = User(email_address="12@34.com")
+            user.create()
+
+        # And two documents with a specific field value that's an Enum
         email_address = "unique@test.com"
         user_to_return1 = User(email_address=email_address)
         user_to_return1.create()
@@ -178,7 +205,9 @@ class TestDocument:
 
         # And the right documents are returned
         assert 2 == len(found_users)
-        assert {user_to_return1.id, user_to_return2.id} == {user.id for user in found_users}
+        expected_users = {user_to_return1.id: user_to_return1, user_to_return2.id: user_to_return2}
+        for user in found_users:
+            assert asdict(expected_users[user.id]) == asdict(user)
 
     def test_where_with_limit(self, setup_firestore_db):
         # Given a bunch of documents
