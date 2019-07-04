@@ -57,12 +57,3 @@ def _list_to(field_value: list) -> list:
 @convert_value_to_firestore.register
 def _enum_to(field_value: Enum) -> Union[int, str]:
     return field_value.value
-
-
-@convert_value_to_firestore.register
-def _datetime_to(field_value: datetime) -> datetime:
-    """Always require datetime objects with timezone info.
-    """
-    if field_value.tzinfo is None or field_value.tzinfo.utcoffset(field_value) is None:
-        raise ValueError(f"The supplied datetime has no timezone info: {field_value}")
-    return field_value

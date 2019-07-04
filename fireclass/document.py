@@ -165,8 +165,6 @@ class Document(ABC):
             )
 
         # Support enum fields too
-        final_value = value
-        if issubclass(corresponding_field.type, Enum):
-            final_value = value.value
+        final_value = convert_value_to_firestore(value)
 
         return _DocumentQuery(cls, cls._collection().where(field_path, op_string, final_value))
