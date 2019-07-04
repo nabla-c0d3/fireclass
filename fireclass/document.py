@@ -1,6 +1,5 @@
 from abc import ABC
 import dataclasses
-from enum import Enum
 from typing import TypeVar, Type, Any, Optional, Iterator
 
 from google.cloud import firestore, firestore_v1

@@ -1,5 +1,4 @@
 import dataclasses
-from datetime import datetime
 from enum import Enum
 from functools import singledispatch
 from typing import Union, Any
