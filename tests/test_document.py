@@ -1,6 +1,8 @@
 from dataclasses import dataclass, asdict
 from datetime import datetime, timezone
 from enum import Enum
+from typing import Optional
+
 from google.cloud import firestore
 
 from fireclass.document import (
@@ -239,3 +241,80 @@ class TestDocument:
         # It fails
         with pytest.raises(TypeError):
             User.where("is_active", "==", "not a bool").stream()
+
+
+@dataclass
+class UserWithOptionalTypes(Document):
+    email_address: Optional[str] = "test@test.com"
+    family_members_count: Optional[int] = 5
+    last_login_date: Optional[datetime] = datetime.utcnow().replace(tzinfo=timezone.utc)
+    membership: Optional[UserMembershipLevelEnum] = UserMembershipLevelEnum.FULL
+    is_active: Optional[bool] = True
+
+
+class TestDocumentWithOptionalTypes:
+
+    def test_document_create_get_and_delete(self, setup_firestore_db):
+        # Given a document
+        user = UserWithOptionalTypes()
+
+        # When saving it to the DB without providing an ID
+        # It succeeds
+        user.create()
+
+        # And the document can be retrieved from the DB
+        retrieved_user = UserWithOptionalTypes.get_document(user.id)
+        assert user == retrieved_user
+
+        # And the document can be deleted from the DB
+        UserWithOptionalTypes.delete_document(user.id)
+        with pytest.raises(DocumentNotFound):
+            UserWithOptionalTypes.get_document(user.id)
+
+    def test_document_create_get_and_delete_with_none_values(self, setup_firestore_db):
+        # Given a document with None values
+        user = UserWithOptionalTypes(
+            email_address=None,
+            family_members_count=None,
+            last_login_date=None,
+            membership=None,
+            is_active=None,
+        )
+
+        # When saving it to the DB without providing an ID
+        # It succeeds
+        user.create()
+
+        # And the document can be retrieved from the DB
+        retrieved_user = UserWithOptionalTypes.get_document(user.id)
+        assert user == retrieved_user
+
+        # And the document can be deleted from the DB
+        UserWithOptionalTypes.delete_document(user.id)
+        with pytest.raises(DocumentNotFound):
+            UserWithOptionalTypes.get_document(user.id)
+
+    def test_where_with_none_value(self, setup_firestore_db):
+        # Given a bunch of documents
+        users_count = 5
+        for _ in range(users_count):
+            user = UserWithOptionalTypes(email_address="12@34.com")
+            user.create()
+
+        # And two documents with a specific field set to None
+        user_to_return1 = UserWithOptionalTypes(email_address=None)
+        user_to_return1.create()
+        user_to_return2 = UserWithOptionalTypes(email_address=None)
+        user_to_return2.create()
+
+        # When querying for the None value
+        query = UserWithOptionalTypes.where("email_address", "==", None)
+
+        # It succeeds
+        found_users = [user for user in query.stream()]
+
+        # And the right documents are returned
+        assert 2 == len(found_users)
+        expected_users = {user_to_return1.id: user_to_return1, user_to_return2.id: user_to_return2}
+        for user in found_users:
+            assert asdict(expected_users[user.id]) == asdict(user)

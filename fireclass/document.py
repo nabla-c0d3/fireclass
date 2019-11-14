@@ -1,6 +1,6 @@
 from abc import ABC
 import dataclasses
-from typing import TypeVar, Type, Any, Optional, Iterator
+from typing import TypeVar, Type, Any, Optional, Iterator, Union
 
 from google.cloud import firestore, firestore_v1
 from google.cloud.firestore_v1.proto.write_pb2 import WriteResult
@@ -157,7 +157,21 @@ class Document(ABC):
         corresponding_field = cls._find_field(field_path)
 
         # Check that the value has the right type
-        if corresponding_field.type != type(value):
+        should_raise_type_error = False
+        if hasattr(corresponding_field.type, "__origin__") and corresponding_field.type.__origin__ == Union:
+            # Special processing for Optional fields
+            if corresponding_field.type.__args__[1] != type(None):  # noqa: E721
+                # Sanity check as this should never happen: we only support Union when used for Optional[T]
+                raise TypeError(f"Unsupported field type: {corresponding_field.name}: {corresponding_field.type}")
+
+            if corresponding_field.type.__args__[0] != type(value) and value is not None:
+                # The value is not None and is not of the expected type
+                should_raise_type_error = True
+
+        elif corresponding_field.type != type(value):
+            should_raise_type_error = True
+
+        if should_raise_type_error:
             raise TypeError(
                 f"The supplied value '{value}' has type {type(value)} but the corresponding field"
                 f" '{corresponding_field.name}' requires values of type {corresponding_field.type}."
