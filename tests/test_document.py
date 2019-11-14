@@ -49,6 +49,9 @@ def setup_firestore_db():
     for user in User.stream():
         user.delete()
 
+    for user in UserWithOptionalTypes.stream():
+        user.delete()
+
     # Discard the handle to the DB
     _discard_firestore_client()
 
