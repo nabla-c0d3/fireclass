@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from google.cloud import firestore
-from fireclass import Document, initialize_with_firestore_client
+from fireclass.document import Document, initialize_with_firestore_client
 
 
 class MembershipLevelEnum(Enum):
