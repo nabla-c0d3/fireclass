@@ -50,6 +50,7 @@ class DocumentAlreadyCreatedInDatabase(Exception):
 
 
 _DocumentSubclassTypeVar = TypeVar("_DocumentSubclassTypeVar", bound="Document")
+FirestoreOperator = Literal["<", "<=", "==", ">=", ">", "array_contains"]
 
 
 class _DocumentQuery:
@@ -65,8 +66,10 @@ class _DocumentQuery:
         for firestore_document in self._firestore_query.stream(transaction):
             yield self._document_cls._from_firestore_document(firestore_document)
 
-
-FirestoreOperator = Literal["<", "<=", "==", ">=", ">", "array_contains"]
+    def where(
+        self, field_path: str, op_string: FirestoreOperator, value: Any
+    ) -> "_DocumentQuery":
+        return _DocumentQuery(self._document_cls, self._firestore_query.where(field_path, op_string, value))
 
 
 @dataclasses.dataclass
