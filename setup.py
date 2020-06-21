@@ -23,7 +23,7 @@ setup(
     author_email=__email__,
     url="https://github.com/nabla-c0d3/fireclass",
     packages=find_packages(exclude=["docs", "tests"]),
-    install_requires=["google-cloud-firestore<1.3.0"],
+    install_requires=["google-cloud-firestore<1.8.0"],
     classifiers=[
         "Development Status :: 4 - Beta",
         "Intended Audience :: Developers",
