@@ -256,7 +256,6 @@ class UserWithOptionalTypes(Document):
 
 
 class TestDocumentWithOptionalTypes:
-
     def test_document_create_get_and_delete(self, setup_firestore_db):
         # Given a document
         user = UserWithOptionalTypes()
@@ -277,11 +276,7 @@ class TestDocumentWithOptionalTypes:
     def test_document_create_get_and_delete_with_none_values(self, setup_firestore_db):
         # Given a document with None values
         user = UserWithOptionalTypes(
-            email_address=None,
-            family_members_count=None,
-            last_login_date=None,
-            membership=None,
-            is_active=None,
+            email_address=None, family_members_count=None, last_login_date=None, membership=None, is_active=None
         )
 
         # When saving it to the DB without providing an ID

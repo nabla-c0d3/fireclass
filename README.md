@@ -4,7 +4,7 @@
 [![PyPi Version](https://img.shields.io/pypi/v/fireclass.svg)](https://pypi.org/project/fireclass/)
 [![Build Status](https://travis-ci.org/nabla-c0d3/fireclass.svg?branch=master)](https://travis-ci.org/nabla-c0d3/fireclass)
 
-Firestore + Dataclass: declare and interact with your Firestore models using dataclasses.
+Firestore + Dataclass: declare and interact with your Firestore models using Python dataclasses.
 
 ## Installation
 
@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from google.cloud import firestore
-from fireclass.document import Document, initialize_with_firestore_client
+from fireclass import Document, initialize_with_firestore_client
 
 
 class MembershipLevelEnum(Enum):
