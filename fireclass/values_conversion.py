@@ -45,7 +45,7 @@ def _int_to_enum(field_value: int, field_description: dataclasses.Field) -> Unio
         return field_value
     elif hasattr(field_description.type, "__origin__") and field_description.type.__origin__ == Union:
         # Special processing for Optional[T] fields
-        if field_description.type.__args__ == Optional[int].__args__:
+        if field_description.type.__args__ == Optional[int].__args__:  # type: ignore
             # We received an int value for an Optional[int] field
             return field_value
         elif issubclass(field_description.type.__args__[0], Enum):
