@@ -9,7 +9,9 @@ install:
 script:
   # Ensure the module works when installed - do it before installing dependencies via pipenv
   - python setup.py install
-  - python sample.py
+  - cd tests  # Switch folder to avoid conflicts between ./fireclass and the installed fireclass module
+  - python ../sample.py
+  - cd ..
   # Run tests
   - pip uninstall -y fireclass
   - pipenv install --dev
