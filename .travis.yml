@@ -11,6 +11,6 @@ script:
   - python setup.py install
   - python sample.py
   # Run tests
-  - pip uninstall fireclass
+  - pip uninstall -y fireclass
   - pipenv install --dev
   - invoke test
