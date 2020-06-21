@@ -245,6 +245,27 @@ class TestDocument:
         with pytest.raises(TypeError):
             User.where("is_active", "==", "not a bool").stream()
 
+    def test_multiple_where_chained(self, setup_firestore_db):
+        # Given a bunch of users that all have the same address and membership
+        email_address = "unique@test.com"
+        for _ in range(5):
+            user = User(email_address=email_address, membership=UserMembershipLevelEnum.NONE)
+            user.create()
+
+        # And one user with the same email but a different membership
+        user_to_return = User(email_address=email_address, membership=UserMembershipLevelEnum.FULL)
+        user_to_return.create()
+
+        # When using a compound query (ie. multiple where()) to fetch that one user
+        query = User.where("email_address", "==", email_address).where("membership", "==", UserMembershipLevelEnum.FULL)
+
+        # It succeeds
+        found_users = [user for user in query.stream()]
+
+        # And the right user was returned
+        assert 1 == len(found_users)
+        assert asdict(found_users[0]) == asdict(user_to_return)
+
 
 @dataclass
 class UserWithOptionalTypes(Document):

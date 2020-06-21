@@ -49,6 +49,9 @@ class DocumentAlreadyCreatedInDatabase(Exception):
     pass
 
 
+FirestoreOperator = Literal["<", "<=", "==", ">=", ">", "array_contains"]
+
+
 _DocumentSubclassTypeVar = TypeVar("_DocumentSubclassTypeVar", bound="Document")
 
 
@@ -65,8 +68,11 @@ class _DocumentQuery:
         for firestore_document in self._firestore_query.stream(transaction):
             yield self._document_cls._from_firestore_document(firestore_document)
 
-
-FirestoreOperator = Literal["<", "<=", "==", ">=", ">", "array_contains"]
+    def where(self, field_path: str, op_string: FirestoreOperator, value: Any) -> "_DocumentQuery":
+        # This is to support compound queries
+        # https://firebase.google.com/docs/firestore/query-data/queries#compound_queries
+        final_value = _validate_and_convert_value_to_firestore(self._document_cls, field_path, value)
+        return _DocumentQuery(self._document_cls, self._firestore_query.where(field_path, op_string, final_value))
 
 
 @dataclasses.dataclass
@@ -152,32 +158,38 @@ class Document(ABC):
     def where(
         cls: Type[_DocumentSubclassTypeVar], field_path: str, op_string: FirestoreOperator, value: Any
     ) -> _DocumentQuery:
-        # TODO: Add support for .
-        # Check that the field exists
-        corresponding_field = cls._find_field(field_path)
+        final_value = _validate_and_convert_value_to_firestore(cls, field_path, value)
+        return _DocumentQuery(cls, cls._collection().where(field_path, op_string, final_value))
 
-        # Check that the value has the right type
-        should_raise_type_error = False
-        if hasattr(corresponding_field.type, "__origin__") and corresponding_field.type.__origin__ == Union:
-            # Special processing for Optional fields
-            if corresponding_field.type.__args__[1] != type(None):  # noqa: E721
-                # Sanity check as this should never happen: we only support Union when used for Optional[T]
-                raise TypeError(f"Unsupported field type: {corresponding_field.name}: {corresponding_field.type}")
 
-            if corresponding_field.type.__args__[0] != type(value) and value is not None:
-                # The value is not None and is not of the expected type
-                should_raise_type_error = True
+def _validate_and_convert_value_to_firestore(
+    document_cls: Type[_DocumentSubclassTypeVar], field_path: str, value: Any
+) -> Any:
+    # TODO: Add support for .
+    # Check that the field exists
+    corresponding_field = document_cls._find_field(field_path)
 
-        elif corresponding_field.type != type(value):
+    # Check that the value has the right type
+    should_raise_type_error = False
+    if hasattr(corresponding_field.type, "__origin__") and corresponding_field.type.__origin__ == Union:
+        # Special processing for Optional fields
+        if corresponding_field.type.__args__[1] != type(None):  # noqa: E721
+            # Sanity check as this should never happen: we only support Union when used for Optional[T]
+            raise TypeError(f"Unsupported field type: {corresponding_field.name}: {corresponding_field.type}")
+
+        if corresponding_field.type.__args__[0] != type(value) and value is not None:
+            # The value is not None and is not of the expected type
             should_raise_type_error = True
 
-        if should_raise_type_error:
-            raise TypeError(
-                f"The supplied value '{value}' has type {type(value)} but the corresponding field"
-                f" '{corresponding_field.name}' requires values of type {corresponding_field.type}."
-            )
+    elif corresponding_field.type != type(value):
+        should_raise_type_error = True
 
-        # Support enum fields too
-        final_value = convert_value_to_firestore(value)
+    if should_raise_type_error:
+        raise TypeError(
+            f"The supplied value '{value}' has type {type(value)} but the corresponding field"
+            f" '{corresponding_field.name}' requires values of type {corresponding_field.type}."
+        )
 
-        return _DocumentQuery(cls, cls._collection().where(field_path, op_string, final_value))
+    # Support enum fields too
+    final_value = convert_value_to_firestore(value)
+    return final_value
