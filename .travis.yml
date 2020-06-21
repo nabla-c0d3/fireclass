@@ -13,4 +13,4 @@ script:
   # Run tests
   - pip uninstall -y fireclass
   - pipenv install --dev
-  - invoke test
+  - pipenv run invoke test
