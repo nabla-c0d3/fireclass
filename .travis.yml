@@ -4,13 +4,13 @@ dist: xenial
 python: "3.7"
 install:
   - pip install pipenv
-  - pipenv install --dev
   # Decrypt the service account used for end-to-end testing
   - openssl aes-256-cbc -K $encrypted_51f431aaca2e_key -iv $encrypted_51f431aaca2e_iv -in travis-ci-test-suite-service-account.json.enc -out travis-ci-test-suite-service-account.json -d
 script:
-  # Run tests
-  - invoke test
-  # Ensure the module works when installed
+  # Ensure the module works when installed - do it before installing dependencies via pipenv
   - python setup.py install
-  - cd tests  # Switch folder to avoid conflicts between the src and the installed module
-  - python ../sample.py
+  - python sample.py
+  # Run tests
+  - pip uninstall fireclass
+  - pipenv install --dev
+  - invoke test
