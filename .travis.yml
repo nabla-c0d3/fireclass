@@ -9,6 +9,7 @@ install:
 script:
   # Ensure the module works when installed - do it before installing dependencies via pipenv
   - python setup.py install
+  - cp travis-ci-test-suite-service-account.json ./tests/travis-ci-test-suite-service-account.json
   - cd tests  # Switch folder to avoid conflicts between ./fireclass and the installed fireclass module
   - python ../sample.py
   - cd ..
